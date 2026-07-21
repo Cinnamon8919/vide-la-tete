@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Vide la tête">
+<title>Vide la tête — Le Moment Suprême</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#1F3A3D; --bg-deep:#162A2C; --card:#F5EFE6; --ink:#1F3A3D; --ink-soft:#5C6F6E;
+    --paper:#F5EFE6; --paper-soft:#A7BAB8; --gold:#D9A441; --gold-deep:#B9862E;
+    --brick:#C96A4F; --divider-dark:rgba(245,239,230,0.12);
+  }
+  *{box-sizing:border-box;}
+  body{ margin:0; background:var(--bg); background-image:radial-gradient(circle at 15% 0%, rgba(217,164,65,0.06), transparent 40%);
+    color:var(--paper); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; -webkit-font-smoothing:antialiased; }
+  #app{ max-width:1180px; margin:0 auto; padding:2rem 1.1rem 5rem; }
+
+  header{ margin-bottom:1.1rem; }
+  .eyebrow-row{ display:flex; align-items:center; gap:8px; margin-bottom:0.4rem; }
+  .eyebrow{ font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:0.14em; color:var(--gold); }
+  .sync-dot{ width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+  .sync-dot.synced{ background:#7C9885; }
+  .sync-dot.syncing{ background:var(--gold); animation:pulse 1.4s infinite; }
+  .sync-dot.error{ background:var(--brick); }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:0.35;} }
+  h1{ font-family:"Fraunces",serif; font-weight:600; font-size:2.1rem; margin:0 0 0.9rem; letter-spacing:-0.01em; }
+  .progress-track{ height:4px; background:var(--divider-dark); border-radius:4px; overflow:hidden; }
+  .progress-fill{ height:100%; width:0%; background:var(--gold); transition:width .35s ease; }
+  .progress-label{ font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--paper-soft); margin-top:0.45rem; }
+  .offline-banner{ background:rgba(201,106,79,0.15); border:1px solid var(--brick); border-radius:10px; padding:8px 12px; font-size:12px; color:#E39C86; margin-top:0.8rem; font-family:"IBM Plex Mono",monospace; }
+
+  .tabbar{ display:flex; gap:2px; margin:1.4rem 0 1.6rem; border-bottom:1px solid var(--divider-dark); }
+  .tabbar button{ background:none; border:none; cursor:pointer; color:var(--paper-soft); font-family:"IBM Plex Mono",monospace;
+    font-size:12.5px; letter-spacing:0.03em; padding:0.7rem 0.2rem; margin-right:1.6rem; border-bottom:2px solid transparent; }
+  .tabbar button.active{ color:var(--gold); border-bottom-color:var(--gold); }
+
+  .capture-bar{ background:var(--card); border-radius:14px; padding:14px; box-shadow:0 8px 24px rgba(0,0,0,0.25); margin-bottom:1.1rem; }
+  .capture-row{ display:flex; gap:10px; align-items:center; }
+  .capture-row input[type=text]{ flex:1; border:none; background:transparent; font-size:15px; color:var(--ink); outline:none; font-family:inherit; padding:8px 0; }
+  .capture-row input::placeholder{ color:var(--ink-soft); }
+  .shutter-btn{ flex-shrink:0; width:44px; height:44px; border-radius:50%; border:none; background:var(--gold); color:var(--bg-deep);
+    display:flex; align-items:center; justify-content:center; cursor:pointer; transition:transform .12s ease, background .12s ease; }
+  .shutter-btn:hover{ background:var(--gold-deep); }
+  .shutter-btn:active{ transform:scale(0.9); }
+  .shutter-btn svg{ width:20px; height:20px; }
+  .cat-pills{ display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+  .cat-pill{ font-family:"IBM Plex Mono",monospace; font-size:10.5px; padding:4px 10px; border-radius:20px; cursor:pointer; border:2px solid transparent; background:rgba(31,58,61,0.05); color:var(--ink-soft); }
+  .cat-pill.selected{ color:#fff; }
+
+  .stat-line{ font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--paper-soft); margin-bottom:1rem; }
+  .stat-line strong{ color:var(--gold); }
+
+  .btn{ font-family:"IBM Plex Mono",monospace; font-size:12px; border-radius:8px; border:none; cursor:pointer; padding:9px 16px; font-weight:500; }
+  .btn-primary{ background:var(--gold); color:var(--bg-deep); }
+  .btn-primary:hover{ background:var(--gold-deep); }
+  .btn-ghost{ background:transparent; color:var(--paper-soft); border:1px solid var(--divider-dark); }
+  .btn-ghost:hover{ color:var(--paper); border-color:var(--paper-soft); }
+
+  .dump-list{ display:flex; flex-direction:column; gap:1px; background:var(--divider-dark); border-radius:12px; overflow:hidden; }
+  .dump-row{ display:flex; align-items:center; gap:10px; padding:0.65rem 0.9rem; background:var(--bg); }
+  .dump-row .dot{ width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .dump-row .txt{ flex:1; font-size:14.5px; }
+  .empty-block{ padding:2.2rem 1rem; text-align:center; color:var(--paper-soft); font-size:13px; font-style:italic; background:var(--card); border-radius:12px; }
+  .empty-block .big{ font-size:28px; display:block; margin-bottom:8px; font-style:normal; }
+
+  .sort-card{ background:var(--card); border-radius:16px; padding:2rem 1.4rem; text-align:center; margin-bottom:1.1rem; }
+  .sort-card .catbadge{ display:inline-block; font-family:"IBM Plex Mono",monospace; font-size:10.5px; padding:3px 10px; border-radius:20px; margin-bottom:12px; color:#fff; }
+  .sort-card .txt{ font-family:"Fraunces",serif; font-size:1.35rem; font-weight:600; color:var(--ink); line-height:1.4; margin-bottom:0.4rem; }
+  .sort-card .hint{ font-size:12px; color:var(--ink-soft); font-family:"IBM Plex Mono",monospace; }
+  .sort-card.is-new{ animation:develop .5s ease-out; }
+  @keyframes develop{ from{ filter:blur(6px) grayscale(70%); opacity:0; transform:scale(0.97);} to{ filter:blur(0) grayscale(0%); opacity:1; transform:scale(1);} }
+  .sort-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(150px,1fr)); gap:8px; margin-bottom:1rem; }
+  .sort-opt{ border-radius:10px; padding:10px 8px; font-size:12.5px; font-weight:600; cursor:pointer; text-align:left; border:2px solid; background:transparent; font-family:inherit; }
+
+  .view-switch{ display:inline-flex; background:rgba(245,239,230,0.06); border-radius:10px; padding:3px; margin-bottom:1rem; }
+  .view-switch button{ font-family:"IBM Plex Mono",monospace; font-size:11.5px; padding:7px 14px; border-radius:8px; border:none; cursor:pointer; background:transparent; color:var(--paper-soft); }
+  .view-switch button.active{ background:var(--gold); color:var(--bg-deep); font-weight:600; }
+
+  .matrix-toolbar{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:space-between; margin-bottom:1.1rem; }
+  .matrix-toolbar-left{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .matrix-toolbar input[type=text]{ background:var(--card); border:none; border-radius:9px; padding:8px 12px; font-size:13px; color:var(--ink); outline:none; }
+  #matrixSearch{ min-width:180px; }
+
+  .addbar{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; background:var(--card); border-radius:12px; padding:10px 12px; margin-bottom:1.1rem; }
+  .addbar input[type=text]{ flex:1; min-width:160px; border:none; background:transparent; font-size:14px; color:var(--ink); outline:none; }
+  .addbar select, .addbar input[type=date]{ font-family:"IBM Plex Mono",monospace; font-size:11.5px; border:1px solid rgba(31,58,61,0.15); border-radius:7px; padding:6px 8px; background:transparent; color:var(--ink); }
+
+  .cat-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:12px; }
+  .cat-col{ background:rgba(245,239,230,0.03); border:1px solid var(--divider-dark); border-radius:14px; padding:10px; display:flex; flex-direction:column; min-width:0; }
+  .cat-col.drag-over{ background:rgba(217,164,65,0.08); border-color:var(--gold); }
+  .cat-col-header{ display:flex; align-items:center; gap:8px; margin-bottom:8px; padding:0 2px; }
+  .cat-dot{ width:11px; height:11px; border-radius:50%; flex-shrink:0; border:2px solid rgba(255,255,255,0.3); }
+  .cat-dot.editable{ cursor:pointer; }
+  .cat-label{ font-family:"Fraunces",serif; font-weight:600; font-size:13px; flex:1; cursor:text; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .cat-label input{ width:100%; background:transparent; border:none; border-bottom:1px solid var(--gold); color:var(--paper); font:inherit; outline:none; }
+  .cat-count{ font-family:"IBM Plex Mono",monospace; font-size:10.5px; color:var(--paper-soft); }
+  .cat-del{ background:none; border:none; color:var(--paper-soft); cursor:pointer; font-size:13px; padding:2px 4px; border-radius:4px; }
+  .cat-del:hover{ color:var(--brick); }
+
+  .task-list{ display:flex; flex-direction:column; gap:6px; min-height:16px; }
+  .task-row{ background:rgba(245,239,230,0.06); border-radius:9px; padding:8px 9px; cursor:grab; }
+  .task-row.is-new{ animation:develop .55s ease-out; }
+  .task-row.dragging{ opacity:0.35; }
+  .task-row.is-done .txt{ text-decoration:line-through; color:var(--paper-soft); }
+  .task-top{ display:flex; align-items:flex-start; gap:7px; }
+  .task-check{ margin-top:2px; flex-shrink:0; width:15px; height:15px; accent-color:var(--gold); cursor:pointer; }
+  .task-row .txt{ flex:1; font-size:13px; line-height:1.4; min-width:0; word-break:break-word; }
+  .task-row .txt[contenteditable]{ outline:none; }
+  .row-del{ background:none; border:none; color:var(--paper-soft); cursor:pointer; font-size:12px; padding:0; flex-shrink:0; }
+  .row-del:hover{ color:var(--brick); }
+  .task-controls{ display:flex; gap:5px; flex-wrap:wrap; align-items:center; margin-top:6px; padding-left:22px; }
+  .mini-select{ font-family:"IBM Plex Mono",monospace; font-size:9.5px; border:none; border-radius:9px; padding:2px 7px; cursor:pointer; color:#fff; max-width:120px; }
+  .mini-date{ font-family:"IBM Plex Mono",monospace; font-size:9.5px; border:1px solid var(--divider-dark); border-radius:9px; padding:1px 6px; background:transparent; color:var(--paper-soft); }
+  .mini-note{ font-family:"IBM Plex Mono",monospace; font-size:9.5px; padding:2px 8px; border-radius:9px; cursor:text; background:rgba(191,155,48,0.18); color:#E0C77B; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .mini-note.placeholder{ background:transparent; border:1px dashed var(--divider-dark); color:var(--paper-soft); }
+  .mini-note input{ font-family:inherit; font-size:inherit; background:var(--card); color:var(--ink); border:none; border-radius:6px; padding:2px 6px; outline:none; width:150px; }
+  .tiny-chip.overdue{ background:rgba(201,106,79,0.25) !important; color:#E39C86 !important; }
+
+  .done-toggle{ font-family:"IBM Plex Mono",monospace; font-size:10.5px; color:#7C9885; background:none; border:none; cursor:pointer; padding:6px 2px 2px; text-align:left; }
+  .col-empty{ font-size:11px; color:var(--paper-soft); font-style:italic; padding:6px 2px; }
+
+  .newcat-form{ background:var(--card); border-radius:14px; padding:12px; margin-bottom:1.1rem; display:flex; flex-direction:column; gap:10px; }
+  .newcat-form input[type=text]{ border:none; border-bottom:1px solid rgba(31,58,61,0.2); background:transparent; font-size:14px; color:var(--ink); outline:none; padding:6px 2px; }
+  .swatches{ display:flex; gap:7px; flex-wrap:wrap; }
+  .swatch{ width:22px; height:22px; border-radius:50%; cursor:pointer; border:2px solid transparent; }
+  .swatch.selected{ border-color:var(--ink); }
+  .newcat-actions{ display:flex; gap:8px; }
+
+  footer{ text-align:center; margin-top:2.5rem; font-family:"IBM Plex Mono",monospace; font-size:10.5px; color:var(--paper-soft); opacity:0.6; }
+  :focus-visible{ outline:2px solid var(--gold); outline-offset:2px; }
+
+  @media (max-width:520px){ h1{ font-size:1.7rem; } .cat-grid{ grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="eyebrow-row">
+      <span class="eyebrow">LE MOMENT SUPRÊME</span>
+      <div class="sync-dot" id="syncDot" title="Synchroniseren..."></div>
+    </div>
+    <h1>Vide la tête</h1>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="progress-label" id="progressLabel">laden…</div>
+    <div id="offlineBanner"></div>
+  </header>
+
+  <div class="tabbar">
+    <button id="tabBtnDump" class="active">🧠 VIDE LA TÊTE</button>
+    <button id="tabBtnMatrix">📊 MATRIX</button>
+  </div>
+
+  <div id="tabContent"></div>
+
+  <footer>synchroniseert via de cloud — enkel zichtbaar voor jou</footer>
+</div>
+
+<script>
+// ── SUPABASE ──────────────────────────────────────────────────────
+const SB_URL = "https://epynmbtfzfnhgglnijwh.supabase.co";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVweW5tYnRmemZuaGdnbG5pandoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2MjQwMDYsImV4cCI6MjEwMDIwMDAwNn0.c7GJPXuweKyvkLFqto5gUN7aDT0qt7XsYMQXe3urjhY";
+
+const ITEMS_KEY = 'lms_vlt_items';
+const CATS_KEY  = 'lms_vlt_categories';
+const STATUS_LABELS_KEY = 'lms_vlt_statuslabels';
+
+async function sbGet(key){
+  const res = await fetch(SB_URL+"/rest/v1/lms_data?key=eq."+encodeURIComponent(key)+"&select=value", {
+    headers:{ apikey:SB_KEY, Authorization:"Bearer "+SB_KEY }
+  });
+  if(!res.ok) throw new Error('sbGet failed');
+  const rows = await res.json();
+  return rows && rows.length>0 ? rows[0].value : null;
+}
+async function sbSet(key, value){
+  const opts = (method,body)=>({ method, headers:{'Content-Type':'application/json', apikey:SB_KEY, Authorization:'Bearer '+SB_KEY, Prefer:'return=minimal'}, body:JSON.stringify(body) });
+  let res = await fetch(SB_URL+"/rest/v1/lms_data", opts('POST',{key,value,updated_at:new Date().toISOString()}));
+  if(res.status===409){
+    res = await fetch(SB_URL+"/rest/v1/lms_data?key=eq."+encodeURIComponent(key), opts('PATCH',{value,updated_at:new Date().toISOString()}));
+  }
+  return res;
+}
+function cacheLocal(key, value){ try{ localStorage.setItem(key, JSON.stringify(value)); }catch(e){} }
+function readLocalCache(key){ try{ const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : null; }catch(e){ return null; } }
+
+let syncState = 'syncing'; // 'syncing' | 'synced' | 'error'
+function setSync(state){
+  syncState = state;
+  const dot = document.getElementById('syncDot');
+  if(!dot) return;
+  dot.className = 'sync-dot ' + state;
+  dot.title = state==='synced' ? 'Gesynchroniseerd' : state==='syncing' ? 'Synchroniseren...' : 'Offline — lokale kopie gebruikt';
+  document.getElementById('offlineBanner').innerHTML = state==='error' ? '<div class="offline-banner">⚠️ Geen verbinding met de cloud — lokale kopie in gebruik. Wijzigingen worden bewaard en later gesynchroniseerd.</div>' : '';
+}
+
+let saveTimers = {};
+function debouncedCloudSave(key, value){
+  cacheLocal(key, value);
+  setSync('syncing');
+  clearTimeout(saveTimers[key]);
+  saveTimers[key] = setTimeout(()=>{
+    sbSet(key, value).then(()=> setSync('synced')).catch(()=> setSync('error'));
+  }, 700);
+}
+
+// ── COLORS ────────────────────────────────────────────────────────
+const PALETTE = ['#D9A441','#C96A4F','#7C9885','#6E8CA0','#9B7EBD','#BF9B30','#4F9C9C','#C97B9C','#8A9A5B','#7E7CBD','#B5652F','#6B8F71'];
+
+const STATUS_DEFS = [
+  { id:'do',           color:'#C0392B' },
+  { id:'plan-dated',   color:'#3D6EA6' },
+  { id:'plan-undated', color:'#3D6EA6' },
+  { id:'wait',         color:'#8B5A3C' },
+  { id:'delegate',     color:'#E8C547' },
+  { id:'someday',      color:'#8C8C86' }
+];
+let statusLabels = { do:'Vandaag doen', 'plan-dated':'Gepland', 'plan-undated':'Nog te plannen', wait:'Wachten op', delegate:'Delegeren', someday:'Later / ooit' };
+function statusColor(id){ const s = STATUS_DEFS.find(x=>x.id===id); return s ? s.color : '#5C6F6E'; }
+function statusLabel(id){ return statusLabels[id] || id; }
+function contrastText(hex){
+  const c = hex.replace('#','');
+  const r=parseInt(c.substr(0,2),16), g=parseInt(c.substr(2,2),16), b=parseInt(c.substr(4,2),16);
+  return (r*0.299+g*0.587+b*0.114) > 150 ? '#1F3A3D' : '#fff';
+}
+
+function mk(id, text, category, status, opts) {
+  opts = opts || {};
+  return { id, text, category, status: status || null, note: opts.note || null, planDate: opts.planDate || null, done: false };
+}
+
+const DEFAULT_CATEGORIES = [
+  { id:'invoice-flow',      label:'Invoice & client flow',           color:PALETTE[0] },
+  { id:'website',           label:'Website — products & features',   color:PALETTE[1] },
+  { id:'be-manual',         label:'Belgian branch manual',           color:PALETTE[2] },
+  { id:'seo-loic',          label:'SEO & Loic',                      color:PALETTE[3] },
+  { id:'financieel',        label:'Financieel & aankopen',           color:PALETTE[4] },
+  { id:'admin',             label:'Admin & boekhouding',             color:PALETTE[5] },
+  { id:'systemen',          label:'Systemen & integraties',          color:PALETTE[6] },
+  { id:'business-packages', label:'Business packages',               color:PALETTE[7] },
+  { id:'marketing-fr',      label:'Marketing & klanten Frankrijk',   color:PALETTE[8] },
+  { id:'persoonlijk',       label:'Persoonlijk',                     color:PALETTE[9] }
+];
+
+const DEFAULT_ITEMS = [
+  mk('s1','Welkomscherm maken voor Jelina','systemen','do'),
+  mk('s2','Lumabooth installeren en voorbereiden','systemen','do'),
+  mk('s3','BTW-aangifte naar boekhouder sturen','admin','do'),
+  mk('s4','Bankuittreksels naar boekhouder sturen','admin','plan-dated',{note:'volgende week',planDate:'2026-07-27'}),
+  mk('s5','Afnic bellen over domeinnaam','seo-loic','do',{note:'blokkeert Loic + website'}),
+  mk('s6','Fotobooth materiaal bestellen','financieel','plan-dated',{note:'18/7',planDate:'2026-07-18'}),
+  mk('s7','Bank bellen: Belgische autolening aflossen','financieel','plan-dated',{note:'september',planDate:'2026-09-01'}),
+  mk('s8','CPAM bellen voor aansluiting','admin','do'),
+  mk('s9','CPAM formulier invullen','admin','do'),
+  mk('s10','CIC bellen voor bankrekening aanmaken','admin','do'),
+  mk('s11','Saverne bellen voor update business','admin','do'),
+  mk('s12','SIRET checken op sirene.fr','admin','do'),
+  mk('s13','Overdracht FB/IG + Google Business afdwingen','marketing-fr','do'),
+  mk('s14','Info opzoeken: hoe FB/Instagram over te zetten','marketing-fr','do'),
+  mk('s15','Brochure sturen naar dame trouw in België','marketing-fr','do'),
+  mk('s16','Marketing met Philippe opstarten','marketing-fr','do'),
+  mk('s17','Nieuwe factuur maken voor Jelka','invoice-flow','do'),
+  mk('s18','Info sturen naar CIC bank','admin','do'),
+  mk('s19','Info sturen naar Fleur Corso','marketing-fr','do'),
+  mk('s20','Filmpjes maken voor Jill en Alan','invoice-flow','plan-dated',{note:'20 augustus',planDate:'2026-08-20'}),
+  mk('s21','Link sturen naar Jelina: upsell prints + vraag Google review','invoice-flow','do'),
+  mk('s22','Mac Mini: wachten op antwoord van Tom voor unlock','systemen','wait',{note:'wacht op Tom'}),
+
+  mk('s23','Upsell-proces opzetten na "ja" van klant','invoice-flow','plan-undated'),
+  mk('s24','Extra opties documenteren (PDF of website-pagina)','invoice-flow','plan-undated'),
+  mk('s25','Conditions de vente laten ondertekenen (online document)','invoice-flow','wait',{note:'wacht op verzekering'}),
+  mk('s26','Verzekeringsopties fotobooth onderzoeken','invoice-flow','plan-undated'),
+  mk('s27','Prints-aanbod per invoice: reprints voor €50','invoice-flow','plan-undated'),
+  mk('s28','Online galerij naar Yelena sturen + prints-optie','invoice-flow','plan-dated',{note:'volgende week',planDate:'2026-07-27'}),
+
+  mk('s29',"Instax camera's kopen",'financieel','plan-undated'),
+  mk('s30','Instax fotografie toevoegen aan website','website','plan-undated'),
+  mk('s31','AI photo boost toevoegen aan website','website','plan-undated'),
+  mk('s32','Glam photo boost toevoegen aan website','website','plan-undated'),
+  mk('s33','Extra achtergronden opzoeken + toevoegen','website','plan-undated'),
+  mk('s34','Fotoboekenformat onderzoeken','website','plan-undated'),
+  mk('s35','Belgische website structuur opzetten','website','plan-undated'),
+  mk('s36','Prijzen in België updaten op website','website','plan-undated'),
+  mk('s37',"Geüpdatete foto's + tekst naar fotobooth rental guy",'marketing-fr','plan-undated'),
+  mk('s38','Brochures voor business-klanten maken (slides)','business-packages','plan-undated'),
+  mk('s39',"Business-pagina: sectie met prints + logo's",'website','plan-undated'),
+  mk('s40','Non-business pagina: sectie met branded photo strips','website','plan-undated'),
+
+  mk('s41','Volledige manual: fotobooth beheer voor klanten','be-manual','plan-undated'),
+  mk('s42','Standaard welkomscherm voor Belgische tak','be-manual','plan-undated'),
+  mk('s43',"Cloud-oplossing zoeken voor delen designs/foto's",'be-manual','plan-undated'),
+
+  mk('s44','Moment inplannen: SEO-plan België implementeren','seo-loic','plan-undated'),
+  mk('s45','Debrief-meeting met Loic voor SEO audit','seo-loic','plan-undated'),
+  mk('s46','Gesprek met Loic: .be/.fr onder .com','seo-loic','wait',{note:'wacht op Afnic'}),
+  mk('s47','Website afmaken + mobile check','seo-loic','wait',{note:'wacht op Loic-gesprek'}),
+
+  mk('s48','Dominic betalen voor creatie fotobooth','financieel','do'),
+  mk('s49','Alle materialen bestellen voor nieuwe fotobooth','financieel','do'),
+  mk('s50','Papieren zoeken: auto-duplicaten','financieel','plan-undated'),
+  mk('s51','Auto online zetten voor verkoop (Citroën C4)','financieel','plan-undated'),
+  mk('s52','Beslissing: bedrijfswagen huren of eigen auto houden','financieel','plan-undated'),
+  mk('s53','Sticker ontwerpen voor bedrijfswagen','financieel','someday'),
+  mk('s54',"Carwash + foto's + verkoop Citroën C4",'financieel','plan-undated'),
+  mk('s55',"Nieuwe bestelwagen zoeken (Crit'Air 1/2 of elektrisch)",'financieel','plan-undated'),
+  mk('s56','Le Bon Coin advertentie voorbereiden','financieel','wait',{note:'wacht op SIRET'}),
+
+  mk('s57','Fiscaliteit bellen: Celestat status checken','admin','plan-undated'),
+  mk('s58','Boekhouder-tool ontvangen (opvolgen)','admin','wait'),
+  mk('s59','Follow-up Belgische boekhouder: sluiting + sociale zekerheid','admin','plan-undated'),
+  mk('s60','Belgische autoverzekering betalen','admin','do'),
+  mk('s61','Belgische bank bellen zodra bedrijf sluit','admin','wait',{note:'na sluiting bedrijf'}),
+  mk('s62','Contact Thomas (België): verzekering + unlimited prints','admin','plan-undated'),
+
+  mk('s63','Online betalingssysteem opzetten (BE + FR)','systemen','plan-undated'),
+  mk('s64','Email-tool onderzoeken (Mailchimp geschikt?)','systemen','plan-undated'),
+  mk('s65','Notion CRM vereenvoudigen (BE + FR)','systemen','plan-undated'),
+  mk('s66','CGV art. 7 & 9 herzien','systemen','wait',{note:'wacht op verzekering'}),
+  mk('s67','Notion CRM-velden aanpassen','systemen','wait',{note:'wacht op verzekering'}),
+  mk('s68','Make scenario 2 aanpassen','systemen','wait',{note:'wacht op verzekering'}),
+  mk('s69','E-mailtemplates T3, T4, T9 herzien','systemen','wait',{note:'wacht op verzekering'}),
+  mk('s70','Welkomscherm fotobooth aanpassen','systemen','wait',{note:'wacht op nieuw materiaal'}),
+
+  mk('s71','Business package-strategie ontwikkelen (tier 1/2/3)','business-packages','plan-undated'),
+  mk('s72','Plan: onderscheid business vs. non-business clients','business-packages','plan-undated'),
+
+  mk('s73','Trouwzalen Alsace contacteren','marketing-fr','plan-undated'),
+  mk('s74',"Samenwerking opzetten met fotografen/dj's",'marketing-fr','plan-undated'),
+  mk('s75','Facebook-groepen mariage Strasbourg/Alsace posten','marketing-fr','plan-undated'),
+  mk('s76','Instagram lokaal netwerken','marketing-fr','plan-undated'),
+  mk('s77','Google Business Profile afwerken','marketing-fr','plan-undated'),
+  mk('s78','Gratis profiel op mariages.net','marketing-fr','plan-undated'),
+  mk('s79','Testimonial vragen aan eerste Franse klant','marketing-fr','plan-undated'),
+
+  mk('s80','Belgische website updaten + marketing','website','someday'),
+  mk('s81','Google reviews verzamelen in Frankrijk','marketing-fr','someday'),
+  mk('s82','Info opvragen houten box fotobooth','systemen','someday'),
+  mk('s83','Wild in Love + mariage-beurs info opzoeken','marketing-fr','someday'),
+  mk('s84','Branding nieuwe wagen','financieel','wait',{note:'wacht op auto'}),
+  mk('s85','Boekhouder informeren over SIRET','admin','wait',{note:'wacht op SIRET'}),
+  mk('s86',"Info + nieuwe foto's naar Photobooth Huren",'marketing-fr','someday'),
+
+  mk('s87','Afspraak maken met kapper in Strasbourg','persoonlijk','plan-undated'),
+  mk('s88','Afspraak maken met arts in Strasbourg','persoonlijk','plan-undated'),
+  mk('s89','Meeting met Yahash: Apple CarPlay reparatie','persoonlijk','plan-undated'),
+];
+
+let items = [];
+let categories = [];
+let currentTab = 'dump';
+let sortMode = false;
+let matrixView = 'status';
+let matrixSearch = '';
+let showNewCatForm = false;
+let newCatColor = PALETTE[0];
+let draggedId = null;
+let newlyAddedId = null;
+let hiddenDoneOpen = {};
+let captureCat = null;
+
+function escapeHtml(str){ const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+function catById(id){ return categories.find(c => c.id === id); }
+function todayStr(){ return new Date().toISOString().split('T')[0]; }
+function fmtDateShort(iso){ const d = new Date(iso+'T12:00:00'); return d.toLocaleDateString('nl-NL', { day:'numeric', month:'short' }); }
+
+// ── LOAD / SAVE ───────────────────────────────────────────────────
+async function loadAll(){
+  const localItems = readLocalCache(ITEMS_KEY);
+  const localCats = readLocalCache(CATS_KEY);
+  const localLabels = readLocalCache(STATUS_LABELS_KEY);
+  if(localItems) items = localItems;
+  if(localCats) categories = localCats;
+  if(localLabels) statusLabels = Object.assign(statusLabels, localLabels);
+  if(items.length || categories.length) render();
+
+  try{
+    const [cloudItems, cloudCats, cloudLabels] = await Promise.all([ sbGet(ITEMS_KEY), sbGet(CATS_KEY), sbGet(STATUS_LABELS_KEY) ]);
+    if(cloudItems) { items = cloudItems; cacheLocal(ITEMS_KEY, items); }
+    else if(!items.length){ items = DEFAULT_ITEMS; await sbSet(ITEMS_KEY, items); cacheLocal(ITEMS_KEY, items); }
+    if(cloudCats) { categories = cloudCats; cacheLocal(CATS_KEY, categories); }
+    else if(!categories.length){ categories = DEFAULT_CATEGORIES; await sbSet(CATS_KEY, categories); cacheLocal(CATS_KEY, categories); }
+    if(cloudLabels){ statusLabels = Object.assign(statusLabels, cloudLabels); cacheLocal(STATUS_LABELS_KEY, statusLabels); }
+    setSync('synced');
+  }catch(e){
+    if(!items.length) items = DEFAULT_ITEMS;
+    if(!categories.length) categories = DEFAULT_CATEGORIES;
+    setSync('error');
+  }
+
+  if(!captureCat) captureCat = categories[0] ? categories[0].id : null;
+  render();
+  startPolling();
+}
+
+function saveItems(){ debouncedCloudSave(ITEMS_KEY, items); }
+function saveCats(){ debouncedCloudSave(CATS_KEY, categories); }
+function saveStatusLabels(){ debouncedCloudSave(STATUS_LABELS_KEY, statusLabels); }
+
+function startPolling(){
+  setInterval(async ()=>{
+    try{
+      const [cloudItems, cloudCats, cloudLabels] = await Promise.all([ sbGet(ITEMS_KEY), sbGet(CATS_KEY), sbGet(STATUS_LABELS_KEY) ]);
+      let changed = false;
+      if(cloudItems && JSON.stringify(cloudItems) !== JSON.stringify(items)){ items = cloudItems; cacheLocal(ITEMS_KEY, items); changed = true; }
+      if(cloudCats && JSON.stringify(cloudCats) !== JSON.stringify(categories)){ categories = cloudCats; cacheLocal(CATS_KEY, categories); changed = true; }
+      if(cloudLabels && JSON.stringify(cloudLabels) !== JSON.stringify(statusLabels)){ statusLabels = Object.assign(statusLabels, cloudLabels); cacheLocal(STATUS_LABELS_KEY, statusLabels); changed = true; }
+      if(changed) render();
+      setSync('synced');
+    }catch(e){ setSync('error'); }
+  }, 30000);
+}
+
+// ── MUTATIONS ─────────────────────────────────────────────────────
+function addItem(text, catId){
+  const id = 't' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+  items.unshift(mk(id, text, catId, null));
+  newlyAddedId = id;
+  saveItems(); render();
+  setTimeout(()=>{ newlyAddedId = null; }, 600);
+}
+function assignStatus(id, statusId){
+  const it = items.find(x=>x.id===id);
+  if(it){ it.status = statusId; saveItems(); newlyAddedId = id; render(); setTimeout(()=>{ newlyAddedId=null; },550); }
+}
+function assignCategory(id, catId){
+  const it = items.find(x=>x.id===id);
+  if(it){ it.category = catId; saveItems(); newlyAddedId = id; render(); setTimeout(()=>{ newlyAddedId=null; },550); }
+}
+function setPlanDate(id, dateVal){
+  const it = items.find(x=>x.id===id);
+  if(!it) return;
+  it.planDate = dateVal || null;
+  if(dateVal) it.status = 'plan-dated';
+  saveItems(); render();
+}
+function setNote(id, noteVal){
+  const it = items.find(x=>x.id===id);
+  if(!it) return;
+  it.note = noteVal.trim() || null;
+  saveItems();
+}
+function toggleDone(id){ const it = items.find(x=>x.id===id); if(it){ it.done = !it.done; saveItems(); render(); } }
+function deleteItem(id){ items = items.filter(x=>x.id!==id); saveItems(); render(); }
+function editItemText(id, newText){ const it = items.find(x=>x.id===id); if(it && newText.trim()){ it.text = newText.trim(); saveItems(); } }
+
+function addCategory(label, color){
+  const id = 'c' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+  categories.push({ id, label, color });
+  saveCats(); render();
+}
+function renameCategory(id, label){ const c = catById(id); if(c && label.trim()){ c.label = label.trim(); saveCats(); } }
+function cycleColor(id){
+  const c = catById(id); if(!c) return;
+  const idx = PALETTE.indexOf(c.color);
+  c.color = PALETTE[(idx+1) % PALETTE.length];
+  saveCats(); render();
+}
+function deleteCategory(id){
+  if(!window.confirm('Categorie verwijderen? De taken erin blijven bestaan maar verliezen hun categorie.')) return;
+  items.forEach(it => { if(it.category === id) it.category = null; });
+  categories = categories.filter(c => c.id !== id);
+  saveItems(); saveCats(); render();
+}
+function renameStatus(id, label){ if(label.trim()){ statusLabels[id] = label.trim(); saveStatusLabels(); } }
+
+function switchTab(tab){
+  currentTab = tab; sortMode = false;
+  document.getElementById('tabBtnDump').classList.toggle('active', tab==='dump');
+  document.getElementById('tabBtnMatrix').classList.toggle('active', tab==='matrix');
+  render();
+}
+
+function renderHeader(){
+  const total = items.length;
+  const done = items.filter(t=>t.done).length;
+  document.getElementById('progressFill').style.width = (total? done/total*100:0)+'%';
+  document.getElementById('progressLabel').textContent = done+' van '+total+' afgerond';
+}
+
+// ── DUMP TAB ──────────────────────────────────────────────────────
+function renderDumpTab(){
+  const unsorted = items.filter(i => i.status === null);
+  const sortedCount = items.length - unsorted.length;
+  let html = '';
+
+  html += `<div class="capture-bar">
+    <form id="captureForm" class="capture-row">
+      <input id="captureInput" type="text" placeholder="Wat zit er in je hoofd? Typ het en druk op enter…" autocomplete="off" />
+      <button type="submit" class="shutter-btn" aria-label="Toevoegen">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/></svg>
+      </button>
+    </form>
+    <div class="cat-pills" id="capturePills">`;
+  categories.forEach(c=>{
+    const sel = c.id === captureCat;
+    html += `<div class="cat-pill ${sel?'selected':''}" data-pill="${c.id}" style="${sel?`background:${c.color};border-color:${c.color};`:''}">${escapeHtml(c.label)}</div>`;
+  });
+  html += `</div></div>`;
+
+  html += `<div class="stat-line"><strong>${unsorted.length}</strong> nog geen status &nbsp;·&nbsp; <strong>${sortedCount}</strong> al volledig in de matrix</div>`;
+
+  if(unsorted.length === 0){
+    html += `<div class="empty-block"><span class="big">✅</span>Niets te sorteren — alles heeft al een status.</div>`;
+  } else if(!sortMode){
+    html += `<button class="btn btn-primary" id="startSortBtn" style="margin-bottom:1rem;">🎯 Status toewijzen (${unsorted.length})</button>`;
+    html += `<div class="dump-list">`;
+    unsorted.forEach(it => {
+      const c = catById(it.category);
+      html += `<div class="dump-row">
+        <span class="dot" style="background:${c?c.color:'#888'};"></span>
+        <span class="txt">${escapeHtml(it.text)}</span>
+        <button data-del="${it.id}" style="background:none;border:none;color:var(--paper-soft);cursor:pointer;font-size:14px;">✕</button>
+      </div>`;
+    });
+    html += `</div>`;
+  } else {
+    const cur = unsorted[0];
+    const c = catById(cur.category);
+    html += `<div class="sort-card ${cur.id===newlyAddedId?'is-new':''}">
+      ${c ? `<div class="catbadge" style="background:${c.color};">${escapeHtml(c.label)}</div><br/>` : ''}
+      <div class="txt">${escapeHtml(cur.text)}</div>
+      <div class="hint">${unsorted.length} nog te gaan — welke status?</div>
+    </div>`;
+    html += `<div class="sort-grid">`;
+    STATUS_DEFS.forEach(s => {
+      html += `<button class="sort-opt" data-assignstatus="${cur.id}" data-status="${s.id}" style="border-color:${s.color};color:${s.color};background:${s.color}18;">${escapeHtml(statusLabel(s.id))}</button>`;
+    });
+    html += `</div>`;
+    html += `<button class="btn btn-ghost" id="pauseSortBtn">← Pauzeren</button>`;
+  }
+  return html;
+}
+
+function renderQuickAddBar(){
+  let html = `<div class="addbar">
+    <input type="text" id="quickAddText" placeholder="Nieuwe taak direct toevoegen…" />
+    <select id="quickAddCat">`;
+  categories.forEach(c => { html += `<option value="${c.id}">${escapeHtml(c.label)}</option>`; });
+  html += `</select>
+    <select id="quickAddStatus">
+      <option value="">— geen status —</option>`;
+  STATUS_DEFS.forEach(s => { html += `<option value="${s.id}">${escapeHtml(statusLabel(s.id))}</option>`; });
+  html += `</select>
+    <input type="date" id="quickAddDate" title="Kiezen zet de status automatisch op Gepland" />
+    <button class="btn btn-primary" id="quickAddBtn">Toevoegen</button>
+  </div>`;
+  return html;
+}
+
+// ── TASK ROW (shared) ────────────────────────────────────────────
+function renderTaskRow(it){
+  const c = catById(it.category);
+  const overdue = it.planDate && it.planDate <= todayStr() && !it.done;
+
+  let catOptions = `<option value="">— categorie —</option>`;
+  categories.forEach(cc => { catOptions += `<option value="${cc.id}" ${cc.id===it.category?'selected':''}>${escapeHtml(cc.label)}</option>`; });
+  let statusOptions = `<option value="">— status —</option>`;
+  STATUS_DEFS.forEach(s => { statusOptions += `<option value="${s.id}" ${s.id===it.status?'selected':''}>${escapeHtml(statusLabel(s.id))}</option>`; });
+
+  const catColor = c ? c.color : '#5C6F6E';
+  const stColor = it.status ? statusColor(it.status) : '#5C6F6E';
+
+  const noteHtml = it.note
+    ? `<span class="mini-note" data-noteview="${it.id}" title="Klik om te bewerken">📝 ${escapeHtml(it.note)}</span>`
+    : `<span class="mini-note placeholder" data-noteview="${it.id}">+ notitie</span>`;
+
+  return `<div class="task-row ${it.done?'is-done':''} ${it.id===newlyAddedId?'is-new':''}" draggable="true" data-taskid="${it.id}">
+    <div class="task-top">
+      <input type="checkbox" class="task-check" data-check="${it.id}" ${it.done?'checked':''} />
+      <div class="txt" data-edittext="${it.id}" contenteditable="true" spellcheck="false" style="flex:1;">${escapeHtml(it.text)}</div>
+      <button class="row-del" data-del="${it.id}" title="Verwijderen">✕</button>
+    </div>
+    <div class="task-controls">
+      <select class="mini-select" data-catselect="${it.id}" style="background:${catColor};color:${contrastText(catColor)};">${catOptions}</select>
+      <select class="mini-select" data-statusselect="${it.id}" style="background:${stColor};color:${contrastText(stColor)};">${statusOptions}</select>
+      <input type="date" class="mini-date" data-dateinput="${it.id}" value="${it.planDate||''}" />
+      ${it.planDate ? `<span class="tiny-chip date ${overdue?'overdue':''}" style="background:rgba(61,110,166,0.22);color:#9DBBDA;">${overdue?'🔔 ':'📅 '}${fmtDateShort(it.planDate)}</span>` : ''}
+      <span data-notewrap="${it.id}">${noteHtml}</span>
+    </div>
+  </div>`;
+}
+
+// ── STATUS VIEW ───────────────────────────────────────────────────
+function renderStatusView(){
+  let html = `<div class="cat-grid" id="catGrid">`;
+  const q = matrixSearch.trim().toLowerCase();
+  STATUS_DEFS.forEach(s => {
+    let colItems = items.filter(i => i.status === s.id);
+    if(q) colItems = colItems.filter(i => i.text.toLowerCase().includes(q));
+    let open = colItems.filter(i => !i.done);
+    const done = colItems.filter(i => i.done);
+    if(s.id === 'plan-dated'){
+      open = open.slice().sort((a,b)=>{ if(!a.planDate && !b.planDate) return 0; if(!a.planDate) return 1; if(!b.planDate) return -1; return a.planDate < b.planDate ? -1 : 1; });
+    }
+    const doneOpen = !!hiddenDoneOpen[s.id];
+    html += `<div class="cat-col" data-statuscol="${s.id}">
+      <div class="cat-col-header">
+        <div class="cat-dot" style="background:${s.color};"></div>
+        <div class="cat-label" data-statuslabel="${s.id}">${escapeHtml(statusLabel(s.id))}</div>
+        <span class="cat-count">${open.length}/${colItems.length}</span>
+      </div>
+      <div class="task-list" data-statuslist="${s.id}">`;
+    if(open.length===0 && done.length===0) html += `<div class="col-empty">sleep een taak hierheen</div>`;
+    open.forEach(it => { html += renderTaskRow(it); });
+    if(done.length){
+      html += `<button class="done-toggle" data-toggledone="${s.id}">${doneOpen?'▾':'▸'} ✅ ${done.length} afgerond</button>`;
+      if(doneOpen) done.forEach(it => { html += renderTaskRow(it); });
+    }
+    html += `</div></div>`;
+  });
+  html += `</div>`;
+  return html;
+}
+
+// ── CATEGORY VIEW ─────────────────────────────────────────────────
+function renderCategoryView(){
+  let html = '';
+  if(showNewCatForm){
+    html += `<div class="newcat-form">
+      <input type="text" id="newCatName" placeholder="Naam van de categorie…" autocomplete="off" />
+      <div class="swatches" id="newCatSwatches">`;
+    PALETTE.forEach(c => { html += `<div class="swatch ${c===newCatColor?'selected':''}" data-color="${c}" style="background:${c};"></div>`; });
+    html += `</div>
+      <div class="newcat-actions">
+        <button class="btn btn-primary" id="confirmNewCatBtn">Aanmaken</button>
+        <button class="btn btn-ghost" id="cancelNewCatBtn">Annuleren</button>
+      </div>
+    </div>`;
+  }
+
+  html += `<div class="cat-grid" id="catGrid">`;
+  const q = matrixSearch.trim().toLowerCase();
+  categories.forEach(cat => {
+    let catItems = items.filter(i => i.category === cat.id);
+    if(q) catItems = catItems.filter(i => i.text.toLowerCase().includes(q));
+    const open = catItems.filter(i => !i.done);
+    const done = catItems.filter(i => i.done);
+    const doneOpen = !!hiddenDoneOpen['cat-'+cat.id];
+    html += `<div class="cat-col" data-catcol="${cat.id}">
+      <div class="cat-col-header">
+        <div class="cat-dot editable" data-colorcycle="${cat.id}" style="background:${cat.color};"></div>
+        <div class="cat-label" data-catlabel="${cat.id}">${escapeHtml(cat.label)}</div>
+        <span class="cat-count">${open.length}/${catItems.length}</span>
+        <button class="cat-del" data-delcat="${cat.id}" title="Categorie verwijderen">✕</button>
+      </div>
+      <div class="task-list" data-catlist="${cat.id}">`;
+    if(open.length===0 && done.length===0) html += `<div class="col-empty">sleep of kies deze categorie</div>`;
+    open.forEach(it => { html += renderTaskRow(it); });
+    if(done.length){
+      html += `<button class="done-toggle" data-toggledone="cat-${cat.id}">${doneOpen?'▾':'▸'} ✅ ${done.length} afgerond</button>`;
+      if(doneOpen) done.forEach(it => { html += renderTaskRow(it); });
+    }
+    html += `</div></div>`;
+  });
+  html += `</div>`;
+  return html;
+}
+
+function renderMatrixTab(){
+  let html = `<div class="matrix-toolbar">
+    <div class="matrix-toolbar-left">
+      <div class="view-switch">
+        <button id="viewBtnStatus" class="${matrixView==='status'?'active':''}">Op status</button>
+        <button id="viewBtnCategory" class="${matrixView==='category'?'active':''}">Op categorie</button>
+      </div>
+      <input type="text" id="matrixSearch" placeholder="Zoek in de matrix…" value="${escapeHtml(matrixSearch)}" />
+    </div>
+    ${matrixView==='category' ? '<button class="btn btn-ghost" id="toggleNewCatBtn">+ Nieuwe categorie</button>' : ''}
+  </div>`;
+  html += renderQuickAddBar();
+  html += matrixView === 'status' ? renderStatusView() : renderCategoryView();
+  return html;
+}
+
+function render(){
+  renderHeader();
+  const el = document.getElementById('tabContent');
+  el.innerHTML = currentTab === 'dump' ? renderDumpTab() : renderMatrixTab();
+  attachHandlers();
+}
+
+function attachHandlers(){
+  if(currentTab === 'dump'){
+    const form = document.getElementById('captureForm');
+    if(form) form.addEventListener('submit', e=>{
+      e.preventDefault();
+      const input = document.getElementById('captureInput');
+      const t = input.value.trim();
+      if(!t) return;
+      addItem(t, captureCat);
+      input.value=''; input.focus();
+    });
+    document.querySelectorAll('[data-pill]').forEach(p=>{
+      p.addEventListener('click', ()=>{ captureCat = p.dataset.pill; render(); document.getElementById('captureInput').focus(); });
+    });
+    const startBtn = document.getElementById('startSortBtn');
+    if(startBtn) startBtn.addEventListener('click', ()=>{ sortMode = true; render(); });
+    const pauseBtn = document.getElementById('pauseSortBtn');
+    if(pauseBtn) pauseBtn.addEventListener('click', ()=>{ sortMode = false; render(); });
+    document.querySelectorAll('[data-assignstatus]').forEach(b=>{
+      b.addEventListener('click', ()=> assignStatus(b.dataset.assignstatus, b.dataset.status));
+    });
+    document.querySelectorAll('[data-del]').forEach(b=>{
+      b.addEventListener('click', ()=> deleteItem(b.dataset.del));
+    });
+  } else {
+    const viewStatusBtn = document.getElementById('viewBtnStatus');
+    const viewCatBtn = document.getElementById('viewBtnCategory');
+    if(viewStatusBtn) viewStatusBtn.addEventListener('click', ()=>{ matrixView='status'; render(); });
+    if(viewCatBtn) viewCatBtn.addEventListener('click', ()=>{ matrixView='category'; render(); });
+
+    const search = document.getElementById('matrixSearch');
+    if(search){
+      search.addEventListener('input', e=>{
+        matrixSearch = e.target.value; render();
+        const s2 = document.getElementById('matrixSearch');
+        s2.focus(); s2.setSelectionRange(matrixSearch.length, matrixSearch.length);
+      });
+    }
+    const toggleNewCat = document.getElementById('toggleNewCatBtn');
+    if(toggleNewCat) toggleNewCat.addEventListener('click', ()=>{ showNewCatForm = !showNewCatForm; render(); });
+    const cancelNewCat = document.getElementById('cancelNewCatBtn');
+    if(cancelNewCat) cancelNewCat.addEventListener('click', ()=>{ showNewCatForm=false; render(); });
+    document.querySelectorAll('[data-color]').forEach(sw=>{
+      sw.addEventListener('click', ()=>{ newCatColor = sw.dataset.color; render(); });
+    });
+    const confirmNewCat = document.getElementById('confirmNewCatBtn');
+    if(confirmNewCat) confirmNewCat.addEventListener('click', ()=>{
+      const nameInput = document.getElementById('newCatName');
+      const name = nameInput.value.trim();
+      if(!name) return;
+      addCategory(name, newCatColor);
+      showNewCatForm = false; newCatColor = PALETTE[0];
+    });
+
+    const quickAddBtn = document.getElementById('quickAddBtn');
+    if(quickAddBtn) quickAddBtn.addEventListener('click', ()=>{
+      const txt = document.getElementById('quickAddText').value.trim();
+      const cat = document.getElementById('quickAddCat').value;
+      let status = document.getElementById('quickAddStatus').value || null;
+      const dateVal = document.getElementById('quickAddDate').value;
+      if(!txt) return;
+      const id = 't' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+      let planDate = null;
+      if(dateVal){ planDate = dateVal; status = 'plan-dated'; }
+      items.unshift(mk(id, txt, cat, status, {planDate}));
+      newlyAddedId = id;
+      saveItems(); render();
+      setTimeout(()=>{ newlyAddedId=null; },600);
+    });
+
+    document.querySelectorAll('[data-colorcycle]').forEach(d=>{ d.addEventListener('click', ()=> cycleColor(d.dataset.colorcycle)); });
+    document.querySelectorAll('[data-catlabel]').forEach(labelEl=>{
+      labelEl.addEventListener('click', ()=>{
+        const id = labelEl.dataset.catlabel;
+        const c = catById(id);
+        labelEl.innerHTML = `<input type="text" value="${escapeHtml(c.label)}" />`;
+        const inp = labelEl.querySelector('input'); inp.focus(); inp.select();
+        function commit(){ renameCategory(id, inp.value); render(); }
+        inp.addEventListener('blur', commit);
+        inp.addEventListener('keydown', e=>{ if(e.key==='Enter') commit(); if(e.key==='Escape') render(); });
+      });
+    });
+    document.querySelectorAll('[data-statuslabel]').forEach(labelEl=>{
+      labelEl.addEventListener('click', ()=>{
+        const id = labelEl.dataset.statuslabel;
+        labelEl.innerHTML = `<input type="text" value="${escapeHtml(statusLabel(id))}" />`;
+        const inp = labelEl.querySelector('input'); inp.focus(); inp.select();
+        function commit(){ renameStatus(id, inp.value); render(); }
+        inp.addEventListener('blur', commit);
+        inp.addEventListener('keydown', e=>{ if(e.key==='Enter') commit(); if(e.key==='Escape') render(); });
+      });
+    });
+    document.querySelectorAll('[data-delcat]').forEach(b=>{ b.addEventListener('click', ()=> deleteCategory(b.dataset.delcat)); });
+    document.querySelectorAll('[data-toggledone]').forEach(b=>{
+      b.addEventListener('click', ()=>{ const id=b.dataset.toggledone; hiddenDoneOpen[id]=!hiddenDoneOpen[id]; render(); });
+    });
+    document.querySelectorAll('[data-check]').forEach(cb=>{ cb.addEventListener('change', ()=> toggleDone(cb.dataset.check)); });
+    document.querySelectorAll('[data-del]').forEach(b=>{ b.addEventListener('click', ()=> deleteItem(b.dataset.del)); });
+    document.querySelectorAll('[data-edittext]').forEach(txtEl=>{
+      txtEl.addEventListener('blur', ()=> editItemText(txtEl.dataset.edittext, txtEl.textContent));
+      txtEl.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); txtEl.blur(); } });
+    });
+    document.querySelectorAll('[data-catselect]').forEach(sel=>{
+      sel.addEventListener('change', ()=>{ if(sel.value) assignCategory(sel.dataset.catselect, sel.value); });
+    });
+    document.querySelectorAll('[data-statusselect]').forEach(sel=>{
+      sel.addEventListener('change', ()=>{ if(sel.value) assignStatus(sel.dataset.statusselect, sel.value); });
+    });
+    document.querySelectorAll('[data-dateinput]').forEach(inp=>{
+      inp.addEventListener('change', ()=> setPlanDate(inp.dataset.dateinput, inp.value));
+    });
+    document.querySelectorAll('[data-noteview]').forEach(noteEl=>{
+      noteEl.addEventListener('click', ()=>{
+        const id = noteEl.dataset.noteview;
+        const it = items.find(x=>x.id===id);
+        const wrap = document.querySelector('[data-notewrap="'+id+'"]');
+        wrap.innerHTML = `<input type="text" value="${escapeHtml(it.note||'')}" placeholder="notitie…" />`;
+        const inp = wrap.querySelector('input'); inp.focus(); inp.select();
+        function commit(){ setNote(id, inp.value); render(); }
+        inp.addEventListener('blur', commit);
+        inp.addEventListener('keydown', e=>{ if(e.key==='Enter') commit(); if(e.key==='Escape') render(); });
+      });
+    });
+
+    document.querySelectorAll('.task-row').forEach(row=>{
+      row.addEventListener('dragstart', e=>{ draggedId = row.dataset.taskid; row.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; });
+      row.addEventListener('dragend', ()=> row.classList.remove('dragging'));
+    });
+    document.querySelectorAll('[data-statuscol]').forEach(col=>{
+      col.addEventListener('dragover', e=>{ e.preventDefault(); col.classList.add('drag-over'); });
+      col.addEventListener('dragleave', ()=> col.classList.remove('drag-over'));
+      col.addEventListener('drop', e=>{ e.preventDefault(); col.classList.remove('drag-over'); if(draggedId){ assignStatus(draggedId, col.dataset.statuscol); draggedId=null; } });
+    });
+    document.querySelectorAll('[data-catcol]').forEach(col=>{
+      col.addEventListener('dragover', e=>{ e.preventDefault(); col.classList.add('drag-over'); });
+      col.addEventListener('dragleave', ()=> col.classList.remove('drag-over'));
+      col.addEventListener('drop', e=>{ e.preventDefault(); col.classList.remove('drag-over'); if(draggedId){ assignCategory(draggedId, col.dataset.catcol); draggedId=null; } });
+    });
+  }
+}
+
+document.getElementById('tabBtnDump').addEventListener('click', ()=> switchTab('dump'));
+document.getElementById('tabBtnMatrix').addEventListener('click', ()=> switchTab('matrix'));
+
+loadAll();
+</script>
+</body>
+</html>
