@@ -120,6 +120,24 @@
   .mini-note input{ font-family:inherit; font-size:inherit; background:var(--card); color:var(--ink); border:none; border-radius:6px; padding:2px 6px; outline:none; width:150px; }
   .tiny-chip.overdue{ background:rgba(201,106,79,0.25) !important; color:#E39C86 !important; }
 
+  .modal-overlay{ position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:500; display:none; align-items:center; justify-content:center; padding:16px; }
+  .modal-box{ background:var(--card); border-radius:16px; padding:18px; width:100%; max-width:340px; max-height:80vh; overflow-y:auto; }
+  .modal-title{ font-family:"Fraunces",serif; font-weight:600; font-size:15px; color:var(--ink); margin-bottom:12px; }
+  .modal-options{ display:flex; flex-direction:column; gap:7px; }
+  .modal-opt{ border-radius:10px; padding:10px 12px; font-size:13px; font-weight:600; cursor:pointer; text-align:left; border:2px solid; background:transparent; font-family:inherit; }
+  .movebtn{ cursor:pointer; border:none; font-family:"IBM Plex Mono",monospace; }
+
+  .mc-list{ display:flex; flex-direction:column; gap:2px; max-height:280px; overflow-y:auto; margin-bottom:14px; }
+  .mc-row{ display:flex; align-items:center; gap:9px; padding:8px 4px; border-bottom:1px solid rgba(31,58,61,0.08); }
+  .mc-row:last-child{ border-bottom:none; }
+  .mc-dot{ width:15px; height:15px; border-radius:50%; flex-shrink:0; cursor:pointer; border:2px solid rgba(0,0,0,0.15); }
+  .mc-label{ flex:1; font-size:13.5px; color:var(--ink); cursor:text; min-width:0; }
+  .mc-label input{ width:100%; font:inherit; border:none; border-bottom:1px solid var(--gold-deep); outline:none; color:var(--ink); background:transparent; }
+  .mc-del{ background:none; border:none; color:var(--ink-soft); cursor:pointer; font-size:13px; padding:2px 4px; }
+  .mc-del:hover{ color:var(--brick); }
+  .mc-addrow input[type=text]{ width:100%; border:none; border-bottom:1px solid rgba(31,58,61,0.2); background:transparent; font-size:14px; color:var(--ink); outline:none; padding:6px 2px; margin-bottom:9px; }
+
+
   .done-toggle{ font-family:"IBM Plex Mono",monospace; font-size:10.5px; color:#7C9885; background:none; border:none; cursor:pointer; padding:6px 2px 2px; text-align:left; }
   .col-empty{ font-size:11px; color:var(--paper-soft); font-style:italic; padding:6px 2px; }
 
@@ -157,6 +175,27 @@
   <div id="tabContent"></div>
 
   <footer>synchroniseert via de cloud — enkel zichtbaar voor jou</footer>
+</div>
+
+<div class="modal-overlay" id="moveModal">
+  <div class="modal-box">
+    <div class="modal-title">Verplaats naar…</div>
+    <div class="modal-options" id="moveModalOptions"></div>
+    <button class="btn btn-ghost" id="moveModalCancel" style="margin-top:12px;width:100%;">Annuleren</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="manageCatModal">
+  <div class="modal-box">
+    <div class="modal-title">Categorieën beheren</div>
+    <div class="mc-list" id="manageCatList"></div>
+    <div class="mc-addrow">
+      <input type="text" id="manageCatNewName" placeholder="Naam van nieuwe categorie…" autocomplete="off" />
+      <div class="swatches" id="manageCatSwatches"></div>
+      <button class="btn btn-primary" id="manageCatAddBtn" style="width:100%;margin-top:10px;">+ Categorie toevoegen</button>
+    </div>
+    <button class="btn btn-ghost" id="manageCatCloseBtn" style="margin-top:12px;width:100%;">Sluiten</button>
+  </div>
 </div>
 
 <script>
@@ -466,6 +505,79 @@ function deleteCategory(id){
 }
 function renameStatus(id, label){ if(label.trim()){ statusLabels[id] = label.trim(); saveStatusLabels(); } }
 
+let moveModalItemId = null;
+function openMoveModal(itemId){
+  moveModalItemId = itemId;
+  const optsEl = document.getElementById('moveModalOptions');
+  optsEl.innerHTML = categories.map(c=>`<button class="modal-opt" data-modalcat="${c.id}" style="border-color:${c.color};color:${c.color};background:${c.color}18;">${escapeHtml(c.label)}</button>`).join('');
+  optsEl.querySelectorAll('[data-modalcat]').forEach(b=>{
+    b.addEventListener('click', ()=>{ assignCategory(moveModalItemId, b.dataset.modalcat); closeMoveModal(); });
+  });
+  document.getElementById('moveModal').style.display = 'flex';
+}
+function closeMoveModal(){
+  document.getElementById('moveModal').style.display = 'none';
+  moveModalItemId = null;
+}
+document.getElementById('moveModal').addEventListener('click', e=>{ if(e.target.id==='moveModal') closeMoveModal(); });
+document.getElementById('moveModalCancel').addEventListener('click', closeMoveModal);
+
+function renderManageCatList(){
+  const listEl = document.getElementById('manageCatList');
+  listEl.innerHTML = categories.map(c => `
+    <div class="mc-row">
+      <div class="mc-dot" data-mccolor="${c.id}" style="background:${c.color};" title="Klik om kleur te wijzigen"></div>
+      <div class="mc-label" data-mclabel="${c.id}" title="Klik om te hernoemen">${escapeHtml(c.label)}</div>
+      <button class="mc-del" data-mcdel="${c.id}" title="Categorie verwijderen">✕</button>
+    </div>
+  `).join('');
+  listEl.querySelectorAll('[data-mccolor]').forEach(d=>{
+    d.addEventListener('click', ()=>{ cycleColor(d.dataset.mccolor); renderManageCatList(); });
+  });
+  listEl.querySelectorAll('[data-mclabel]').forEach(labelEl=>{
+    labelEl.addEventListener('click', ()=>{
+      const id = labelEl.dataset.mclabel;
+      const c = catById(id);
+      labelEl.innerHTML = `<input type="text" value="${escapeHtml(c.label)}" />`;
+      const inp = labelEl.querySelector('input'); inp.focus(); inp.select();
+      function commit(){ renameCategory(id, inp.value); render(); renderManageCatList(); }
+      inp.addEventListener('blur', commit);
+      inp.addEventListener('keydown', e=>{ if(e.key==='Enter') commit(); if(e.key==='Escape') renderManageCatList(); });
+    });
+  });
+  listEl.querySelectorAll('[data-mcdel]').forEach(b=>{
+    b.addEventListener('click', ()=>{ deleteCategory(b.dataset.mcdel); renderManageCatList(); });
+  });
+}
+function renderManageCatSwatches(){
+  const el = document.getElementById('manageCatSwatches');
+  el.innerHTML = PALETTE.map(c=>`<div class="swatch ${c===newCatColor?'selected':''}" data-mcswatch="${c}" style="background:${c};"></div>`).join('');
+  el.querySelectorAll('[data-mcswatch]').forEach(sw=>{
+    sw.addEventListener('click', ()=>{ newCatColor = sw.dataset.mcswatch; renderManageCatSwatches(); });
+  });
+}
+function openManageCatModal(){
+  newCatColor = PALETTE[0];
+  renderManageCatList();
+  renderManageCatSwatches();
+  document.getElementById('manageCatNewName').value = '';
+  document.getElementById('manageCatModal').style.display = 'flex';
+}
+function closeManageCatModal(){ document.getElementById('manageCatModal').style.display = 'none'; }
+document.getElementById('manageCatModal').addEventListener('click', e=>{ if(e.target.id==='manageCatModal') closeManageCatModal(); });
+document.getElementById('manageCatCloseBtn').addEventListener('click', closeManageCatModal);
+document.getElementById('manageCatAddBtn').addEventListener('click', ()=>{
+  const nameInput = document.getElementById('manageCatNewName');
+  const name = nameInput.value.trim();
+  if(!name) return;
+  addCategory(name, newCatColor);
+  nameInput.value = '';
+  newCatColor = PALETTE[0];
+  renderManageCatList();
+  renderManageCatSwatches();
+});
+
+
 function switchTab(tab){
   currentTab = tab; sortMode = false;
   document.getElementById('tabBtnDump').classList.toggle('active', tab==='dump');
@@ -498,7 +610,8 @@ function renderDumpTab(){
     const sel = c.id === captureCat;
     html += `<div class="cat-pill ${sel?'selected':''}" data-pill="${c.id}" style="${sel?`background:${c.color};border-color:${c.color};`:''}">${escapeHtml(c.label)}</div>`;
   });
-  html += `</div></div>`;
+  html += `<div class="cat-pill" id="openManageCatBtnDump" style="border:1px dashed rgba(31,58,61,0.3);">⚙️ Categorieën beheren</div>
+    </div></div>`;
 
   html += `<div class="stat-line"><strong>${unsorted.length}</strong> nog geen status &nbsp;·&nbsp; <strong>${sortedCount}</strong> al volledig in de matrix</div>`;
 
@@ -555,8 +668,6 @@ function renderTaskRow(it){
   const c = catById(it.category);
   const overdue = it.planDate && it.planDate <= todayStr() && !it.done;
 
-  let catOptions = `<option value="">— categorie —</option>`;
-  categories.forEach(cc => { catOptions += `<option value="${cc.id}" ${cc.id===it.category?'selected':''}>${escapeHtml(cc.label)}</option>`; });
   let statusOptions = `<option value="">— status —</option>`;
   STATUS_DEFS.forEach(s => { statusOptions += `<option value="${s.id}" ${s.id===it.status?'selected':''}>${escapeHtml(statusLabel(s.id))}</option>`; });
 
@@ -574,7 +685,7 @@ function renderTaskRow(it){
       <button class="row-del" data-del="${it.id}" title="Verwijderen">✕</button>
     </div>
     <div class="task-controls">
-      <select class="mini-select" data-catselect="${it.id}" style="background:${catColor};color:${contrastText(catColor)};">${catOptions}</select>
+      <button class="mini-select movebtn" data-movebtn="${it.id}" style="background:${catColor};color:${contrastText(catColor)};" title="Klik om naar een andere categorie te verplaatsen">📁 ${c?escapeHtml(c.label):'— categorie —'}</button>
       <select class="mini-select" data-statusselect="${it.id}" style="background:${stColor};color:${contrastText(stColor)};">${statusOptions}</select>
       <input type="date" class="mini-date" data-dateinput="${it.id}" value="${it.planDate||''}" />
       ${it.planDate ? `<span class="tiny-chip date ${overdue?'overdue':''}" style="background:rgba(61,110,166,0.22);color:#9DBBDA;">${overdue?'🔔 ':'📅 '}${fmtDateShort(it.planDate)}</span>` : ''}
@@ -582,6 +693,7 @@ function renderTaskRow(it){
     </div>
   </div>`;
 }
+
 
 // ── STATUS VIEW ───────────────────────────────────────────────────
 function renderStatusView(){
@@ -617,21 +729,7 @@ function renderStatusView(){
 
 // ── CATEGORY VIEW ─────────────────────────────────────────────────
 function renderCategoryView(){
-  let html = '';
-  if(showNewCatForm){
-    html += `<div class="newcat-form">
-      <input type="text" id="newCatName" placeholder="Naam van de categorie…" autocomplete="off" />
-      <div class="swatches" id="newCatSwatches">`;
-    PALETTE.forEach(c => { html += `<div class="swatch ${c===newCatColor?'selected':''}" data-color="${c}" style="background:${c};"></div>`; });
-    html += `</div>
-      <div class="newcat-actions">
-        <button class="btn btn-primary" id="confirmNewCatBtn">Aanmaken</button>
-        <button class="btn btn-ghost" id="cancelNewCatBtn">Annuleren</button>
-      </div>
-    </div>`;
-  }
-
-  html += `<div class="cat-grid" id="catGrid">`;
+  let html = `<div class="cat-grid" id="catGrid">`;
   const q = matrixSearch.trim().toLowerCase();
   categories.forEach(cat => {
     let catItems = items.filter(i => i.category === cat.id);
@@ -668,7 +766,7 @@ function renderMatrixTab(){
       </div>
       <input type="text" id="matrixSearch" placeholder="Zoek in de matrix…" value="${escapeHtml(matrixSearch)}" />
     </div>
-    ${matrixView==='category' ? '<button class="btn btn-ghost" id="toggleNewCatBtn">+ Nieuwe categorie</button>' : ''}
+    <button class="btn btn-ghost" id="openManageCatBtnMatrix">⚙️ Categorieën beheren</button>
   </div>`;
   html += renderQuickAddBar();
   html += matrixView === 'status' ? renderStatusView() : renderCategoryView();
@@ -706,6 +804,8 @@ function attachHandlers(){
     document.querySelectorAll('[data-del]').forEach(b=>{
       b.addEventListener('click', ()=> deleteItem(b.dataset.del));
     });
+    const openManageDump = document.getElementById('openManageCatBtnDump');
+    if(openManageDump) openManageDump.addEventListener('click', openManageCatModal);
   } else {
     const viewStatusBtn = document.getElementById('viewBtnStatus');
     const viewCatBtn = document.getElementById('viewBtnCategory');
@@ -720,21 +820,8 @@ function attachHandlers(){
         s2.focus(); s2.setSelectionRange(matrixSearch.length, matrixSearch.length);
       });
     }
-    const toggleNewCat = document.getElementById('toggleNewCatBtn');
-    if(toggleNewCat) toggleNewCat.addEventListener('click', ()=>{ showNewCatForm = !showNewCatForm; render(); });
-    const cancelNewCat = document.getElementById('cancelNewCatBtn');
-    if(cancelNewCat) cancelNewCat.addEventListener('click', ()=>{ showNewCatForm=false; render(); });
-    document.querySelectorAll('[data-color]').forEach(sw=>{
-      sw.addEventListener('click', ()=>{ newCatColor = sw.dataset.color; render(); });
-    });
-    const confirmNewCat = document.getElementById('confirmNewCatBtn');
-    if(confirmNewCat) confirmNewCat.addEventListener('click', ()=>{
-      const nameInput = document.getElementById('newCatName');
-      const name = nameInput.value.trim();
-      if(!name) return;
-      addCategory(name, newCatColor);
-      showNewCatForm = false; newCatColor = PALETTE[0];
-    });
+    const openManageMatrix = document.getElementById('openManageCatBtnMatrix');
+    if(openManageMatrix) openManageMatrix.addEventListener('click', openManageCatModal);
 
     const quickAddBtn = document.getElementById('quickAddBtn');
     if(quickAddBtn) quickAddBtn.addEventListener('click', ()=>{
@@ -784,8 +871,8 @@ function attachHandlers(){
       txtEl.addEventListener('blur', ()=> editItemText(txtEl.dataset.edittext, txtEl.textContent));
       txtEl.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); txtEl.blur(); } });
     });
-    document.querySelectorAll('[data-catselect]').forEach(sel=>{
-      sel.addEventListener('change', ()=>{ if(sel.value) assignCategory(sel.dataset.catselect, sel.value); });
+    document.querySelectorAll('[data-movebtn]').forEach(btn=>{
+      btn.addEventListener('click', ()=> openMoveModal(btn.dataset.movebtn));
     });
     document.querySelectorAll('[data-statusselect]').forEach(sel=>{
       sel.addEventListener('change', ()=>{ if(sel.value) assignStatus(sel.dataset.statusselect, sel.value); });
